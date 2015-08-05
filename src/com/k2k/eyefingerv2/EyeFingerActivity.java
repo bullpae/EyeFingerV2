@@ -26,7 +26,10 @@ import org.opencv.objdetect.Objdetect;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -36,9 +39,9 @@ import android.view.WindowManager;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-public class EyeFingerActivity extends Activity implements CvCameraViewListener2 {
+public class EyeFingerActivity extends Activity implements CvCameraViewListener2, SensorEventListener {
 
-	private static final String TAG = "EyeTrackerActivity";
+	private static final String TAG = "EyeFingerActivityS";
 	private static final Scalar FACE_RECT_COLOR = new Scalar(0, 255, 0, 255);
 	public static final int JAVA_DETECTOR = 0;
 	private static final int TM_SQDIFF = 0;
@@ -58,6 +61,12 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private MenuItem mItemFace30;
 	private MenuItem mItemFace20;
 	private MenuItem mItemType;
+	
+	private int mDetectorType = JAVA_DETECTOR;
+	private String[] mDetectorName;
+	
+	private SeekBar mMethodSeekbar;
+	private TextView mValue;
 
 	private Mat mRgba;
 	private Mat mGray;
@@ -70,16 +79,10 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private CascadeClassifier mJavaDetectorEye;
 	private CascadeClassifier mJavaDetectorEyeLeft;
 
-	private int mDetectorType = JAVA_DETECTOR;
-	private String[] mDetectorName;
-
 	private float mRelativeFaceSize = 0.2f;
 	private int mAbsoluteFaceSize = 0;
 
 	private CameraBridgeViewBase mOpenCvCameraView;
-
-	private SeekBar mMethodSeekbar;
-	private TextView mValue;
 
 	double xCenter = -1;
 	double yCenter = -1;
@@ -98,6 +101,10 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.javaCameraViewEyeFinger);
 		mOpenCvCameraView.setCvCameraViewListener(this);
 
+		Resources r = Resources.getSystem();
+		Configuration config = r.getConfiguration();
+		onConfigurationChanged(config);
+		
 //		mMethodSeekbar = (SeekBar) findViewById(R.id.methodSeekBar);
 //		mValue = (TextView) findViewById(R.id.method);
 
@@ -301,36 +308,137 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 	@Override
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-		mRgba = inputFrame.rgba();
-		mGray = inputFrame.gray();
-		Core.flip(mRgba, mRgba, 1);
-		Core.flip(mGray, mGray, 1);
 
-		
-		// Potation Mode
+		if (mOrientationMode == Configuration.ORIENTATION_PORTRAIT) {
+//			mRgba = inputFrame.rgba();
+//			// assuming source image's with and height are a pair value:
+//	        int centerX = Math.round(mRgba.width()/2);
+//	        int centerY = Math.round(mRgba.height()/2);
+//
+//	        Point center = new Point(centerY,centerX);
+//	        double angle = 90;
+//	        double scale = 1.0;
+//
+//	        double ratio =  mRgba.height() / (double) mRgba.width();
+//
+//	        int rotatedHeight = (int) Math.round(mRgba.height());       
+//	        int rotatedWidth  = (int) Math.round(mRgba.height() * ratio);
+//
+//	        Mat mapMatrix = Imgproc.getRotationMatrix2D(center, angle, scale);
+//
+//	        Size rotatedSize = new Size(rotatedWidth, rotatedHeight);
+//	        Mat mIntermediateMat = new Mat(rotatedSize, mRgba.type());
+//
+//	        Imgproc.warpAffine(mRgba, mIntermediateMat, mapMatrix, mIntermediateMat.size(), Imgproc.INTER_LINEAR);
+//
+//	        Mat ROI = mRgba.submat(0, mIntermediateMat.rows(), 0, mIntermediateMat.cols());
+//
+//	        mIntermediateMat.copyTo(ROI);
+//	        
+//	        mGray = inputFrame.gray();
+//			// assuming source image's with and height are a pair value:
+//	        centerX = Math.round(mGray.width()/2);
+//	        centerY = Math.round(mGray.height()/2);
+//
+//	        center = new Point(centerY,centerX);
+//	        angle = 90;
+//	        scale = 1.0;
+//
+//	        ratio =  mGray.height() / (double) mGray.width();
+//
+//	        rotatedHeight = (int) Math.round(mGray.height());       
+//	        rotatedWidth  = (int) Math.round(mGray.height() * ratio);
+//
+//	        mapMatrix = Imgproc.getRotationMatrix2D(center, angle, scale);
+//
+//	        rotatedSize = new Size(rotatedWidth, rotatedHeight);
+//	        Mat rotateGray = new Mat(rotatedSize, mRgba.type());
+//
+//	        Imgproc.warpAffine(mRgba, rotateGray, mapMatrix, rotateGray.size(), Imgproc.INTER_LINEAR);
+//
+//	        Mat grayROI = mRgba.submat(0, rotateGray.rows(), 0, rotateGray.cols());
+//
+//	        rotateGray.copyTo(grayROI);
+	        
+//			mRgba = inputFrame.rgba();
+//			double ratio =  mRgba.height() / (double) mRgba.width();
+//			
+//			Core.putText(mRgba, "[Width:" + mRgba.width() + "] [Height:" + mRgba.height() + "] Ratio:" + ratio, new Point(20 , 200),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//
+//	        int rotatedHeight = mRgba.height();     
+//	        int rotatedWidth  = mRgba.width(); //(int) Math.round(mRgba.height() * ratio);
+//	        
+//	        Core.putText(mRgba, "[R-Width:" + rotatedWidth + "] [R-Height:" + rotatedHeight + "]", new Point(20 , 230),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//
+//	        Mat mRgbaT = new Mat(mRgba.height(), mRgba.width(), mRgba.type());// mRgba.clone();
+//	        Imgproc.resize(mRgba, mRgbaT, new Size(rotatedHeight, rotatedWidth));
+//
+//	        Core.flip(mRgbaT.t(), mRgba, 0);
+
+	        
+			Mat mRgbaT = inputFrame.rgba();
+			mRgba = mRgbaT.t();
+			Core.flip(mRgbaT.t(), mRgba, -1);
+			//Size portSize = new Size(mRgbaT.size().height, mRgbaT.size().width);
+			//Imgproc.resize(mRgba, mRgba, portSize);
+			Imgproc.resize(mRgba, mRgba, mRgbaT.size());
+			
+			Core.putText(mRgba, "[Width:" + mRgbaT.size().width + "] [Height:" + mRgbaT.size().height + "]", new Point(20 , 200),
+					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+			
+			Mat mGrayT = inputFrame.gray();
+			mGray = mGrayT.t();
+			Core.flip(mGrayT.t(), mGray, -1);
+			//Imgproc.resize(mGray, mGray, portSize);
+			Imgproc.resize(mGray, mGray, mGrayT.size());
+		} else {
+			mRgba = inputFrame.rgba();
+			mGray = inputFrame.gray();
+		}
+			
+		// Portrait Mode
 		{
 			if (mAbsoluteFaceSize == 0) {
-				int height = mGray.rows();
+				int height = mGray.rows(); // 480
 				if (Math.round(height * mRelativeFaceSize) > 0) {
-					mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize);
+					mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize); // 480*0.2 = 96
 				}
 			}
+			
+			Core.putText(mRgba, "[Face Size:" + mAbsoluteFaceSize + "]", new Point(20 , 60),
+					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+			
+			Core.putText(mRgba, "[ROW:" + mGray.rows() + "] [COL:" + mGray.cols() + "]", new Point(20 , 90),
+					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 
 			if (mZoomWindow == null || mZoomWindow2 == null) {
 				CreateAuxiliaryMats();
 			}
 
 			MatOfRect faces = new MatOfRect();
-
+			
 			if (mJavaDetector != null) {
-				mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, 2, new Size(mAbsoluteFaceSize, mAbsoluteFaceSize),
-						new Size());
+				//CASCADE_DO_CANNY_PRUNING = 1, CASCADE_SCALE_IMAGE = 2,  CASCADE_FIND_BIGGEST_OBJECT = 4, CASCADE_DO_ROUGH_SEARCH = 8;
+				mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, Objdetect.CASCADE_DO_ROUGH_SEARCH, // | Objdetect.CASCADE_SCALE_IMAGE, 
+						new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
 			}
+			
+			//Point tl = new Point();
+			//Point br = new Point();
 			
 			Rect[] facesArray = faces.toArray();
 			for (int i = 0; i < facesArray.length; i++) {
-				Core.putText(mRgba, "[Rect No:" + i + "/" + facesArray.length + "]", new Point(100 , 100),
+				Core.putText(mRgba, "[Rect No:" + i + "/" + facesArray.length + "]", new Point(20 , 120),
 						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+
+				
+//				tl.x = facesArray[i].tl().y;
+//				tl.y = facesArray[i].tl().x;
+//				br.x = facesArray[i].br().y;
+//				br.y = facesArray[i].br().x;
+//				Core.rectangle(mRgba, tl, br, FACE_RECT_COLOR, 3);
 				
 				Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
 				// 센터 좌표 출력
@@ -545,5 +653,30 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			return template;
 		}
 		return template;
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	@Override
+	public void onConfigurationChanged(Configuration newConfig) {
+		super.onConfigurationChanged(newConfig);
+
+		mOrientationMode = newConfig.orientation;
+		
+		if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
+			// 배경 화면 교체 처리
+		} else if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+			// 배경 화면 교체 처리
+		}
 	}
 }
