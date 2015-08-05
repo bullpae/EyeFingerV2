@@ -358,6 +358,9 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 //				Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
 //				Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
 	
+				Core.putText(mRgba, "[Learn CNT:" + learn_frames + "]", new Point(100, 200),
+						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+				
 				if (learn_frames < 5) {
 					teplateR = get_template(mJavaDetectorEye, eyearea_right, 24);
 					teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24);
@@ -455,8 +458,16 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		Mat mROI = mGray.submat(area);
 		int result_cols = mROI.cols() - mTemplate.cols() + 1;
 		int result_rows = mROI.rows() - mTemplate.rows() + 1;
+		
+		Core.putText(mRgba, "[mROI.cols()" + mROI.cols() + "] [mTemplate.cols()=" + mTemplate.cols() + "]}", new Point(100, 240),
+				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+		
+		Core.putText(mRgba, "[mROI.cols()" + mROI.rows() + "] [mTemplate.cols()=" + mTemplate.rows() + "]}", new Point(100, 260),
+				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+		
 		// Check for bad template size
 		if (mTemplate.cols() == 0 || mTemplate.rows() == 0) {
+			learn_frames = 0;
 			return;
 		}
 		Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
@@ -494,7 +505,12 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x, matchLoc.y + mTemplate.rows() + area.y);
 
 		Core.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0, 255));
-		Rect rec = new Rect(matchLoc_tx, matchLoc_ty);
+		//Rect rec = new Rect(matchLoc_tx, matchLoc_ty);
+//		if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
+//			return mmres.maxVal;
+//		} else {
+//			return mmres.minVal;
+//		}
 	}
 
 	private Mat get_template(CascadeClassifier clasificator, Rect area, int size) {
