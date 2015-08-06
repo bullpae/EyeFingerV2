@@ -37,8 +37,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.view.WindowManager;
-import android.widget.SeekBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 public class EyeFingerActivity extends Activity implements CvCameraViewListener2, SensorEventListener {
@@ -53,7 +51,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private static final int TM_CCORR = 4;
 	private static final int TM_CCORR_NORMED = 5;
 
-	private int learn_frames = 0;
+	//private int learn_frames = 0;
 	private Mat teplateR;
 	private Mat teplateL;
 	int method = 0;
@@ -113,6 +111,8 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+//		getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED 
+//				| WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
 		
 		mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.javaCameraViewEyeFinger);
 		mOpenCvCameraView.setCvCameraViewListener(this);
@@ -212,6 +212,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 				try {
 					// load cascade file from application resources
+					//InputStream is = getResources().openRawResource(R.raw.parojos);
 					InputStream is = getResources().openRawResource(R.raw.lbpcascade_frontalface);
 					File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
 					mCascadeFile = new File(cascadeDir, "lbpcascade_frontalface.xml");
@@ -224,7 +225,8 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 					}
 					is.close();
 					os.close();
-
+					
+					//InputStream iser = getResources().openRawResource(R.raw.frontalEyes35x16);
 					InputStream iser = getResources().openRawResource(R.raw.haarcascade_righteye_2splits);
 					File cascadeDirER = getDir("cascadeER", Context.MODE_PRIVATE);
 					File cascadeFileER = new File(cascadeDirER, "haarcascade_eye_right.xml");
@@ -320,17 +322,6 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	public void onCameraViewStarted(int width, int height) {
 	    mRgba = new Mat(height, width, CvType.CV_8UC3);
 	    mGray = new Mat(height, width, CvType.CV_8UC3);
-
-//	    mResolutionList = mOpenCvCameraView.getResolutionList();
-//
-//	    for(Camera.Size resolution:mResolutionList){
-//	        if(resolution.width == 640){
-//	        mOpenCvCameraView.setResolution(resolution);
-//	        }
-//	    }
-//		
-//		mGray = new Mat();
-//		mRgba = new Mat();
 	}
 
 	@Override
@@ -343,108 +334,15 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 	@Override
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
-
 		if (mOrientationMode == Configuration.ORIENTATION_PORTRAIT) {
-//			mRgba = inputFrame.rgba();
-//			// assuming source image's with and height are a pair value:
-//	        int centerX = Math.round(mRgba.width()/2);
-//	        int centerY = Math.round(mRgba.height()/2);
-//
-//	        Point center = new Point(centerY,centerX);
-//	        double angle = 90;
-//	        double scale = 1.0;
-//
-//	        double ratio =  mRgba.height() / (double) mRgba.width();
-//
-//	        int rotatedHeight = (int) Math.round(mRgba.height());       
-//	        int rotatedWidth  = (int) Math.round(mRgba.height() * ratio);
-//
-//	        Mat mapMatrix = Imgproc.getRotationMatrix2D(center, angle, scale);
-//
-//	        Size rotatedSize = new Size(rotatedWidth, rotatedHeight);
-//	        Mat mIntermediateMat = new Mat(rotatedSize, mRgba.type());
-//
-//	        Imgproc.warpAffine(mRgba, mIntermediateMat, mapMatrix, mIntermediateMat.size(), Imgproc.INTER_LINEAR);
-//
-//	        Mat ROI = mRgba.submat(0, mIntermediateMat.rows(), 0, mIntermediateMat.cols());
-//
-//	        mIntermediateMat.copyTo(ROI);
-//	        
-//	        mGray = inputFrame.gray();
-//			// assuming source image's with and height are a pair value:
-//	        centerX = Math.round(mGray.width()/2);
-//	        centerY = Math.round(mGray.height()/2);
-//
-//	        center = new Point(centerY,centerX);
-//	        angle = 90;
-//	        scale = 1.0;
-//
-//	        ratio =  mGray.height() / (double) mGray.width();
-//
-//	        rotatedHeight = (int) Math.round(mGray.height());       
-//	        rotatedWidth  = (int) Math.round(mGray.height() * ratio);
-//
-//	        mapMatrix = Imgproc.getRotationMatrix2D(center, angle, scale);
-//
-//	        rotatedSize = new Size(rotatedWidth, rotatedHeight);
-//	        Mat rotateGray = new Mat(rotatedSize, mRgba.type());
-//
-//	        Imgproc.warpAffine(mRgba, rotateGray, mapMatrix, rotateGray.size(), Imgproc.INTER_LINEAR);
-//
-//	        Mat grayROI = mRgba.submat(0, rotateGray.rows(), 0, rotateGray.cols());
-//
-//	        rotateGray.copyTo(grayROI);
-	        
-//			mRgba = inputFrame.rgba();
-//			double ratio =  mRgba.height() / (double) mRgba.width();
-//			
-//			Core.putText(mRgba, "[Width:" + mRgba.width() + "] [Height:" + mRgba.height() + "] Ratio:" + ratio, new Point(20 , 200),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//
-//	        int rotatedHeight = mRgba.height();     
-//	        int rotatedWidth  = mRgba.width(); //(int) Math.round(mRgba.height() * ratio);
-//	        
-//	        Core.putText(mRgba, "[R-Width:" + rotatedWidth + "] [R-Height:" + rotatedHeight + "]", new Point(20 , 230),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//
-//	        Mat mRgbaT = new Mat(mRgba.height(), mRgba.width(), mRgba.type());// mRgba.clone();
-//	        Imgproc.resize(mRgba, mRgbaT, new Size(rotatedHeight, rotatedWidth));
-//
-//	        Core.flip(mRgbaT.t(), mRgba, 0);
-
-//			mRgba = inputFrame.rgba();
-//			Mat mRgbaT = mRgba.t();
-//			Core.flip(mRgba.t(), mRgbaT, -1);
-//			Imgproc.resize(mRgbaT, mRgba, mRgba.size());
-//			
-//			mGray = inputFrame.rgba();
-//			Mat mGrayT = mGray.t();
-//			Core.flip(mGray.t(), mGrayT, -1);
-//			Imgproc.resize(mGrayT, mGray, mGray.size());
-			 
-			Mat mRgbaT = inputFrame.rgba();
+ 			Mat mRgbaT = inputFrame.rgba();
 			mRgba = mRgbaT.t();
 			Core.flip(mRgbaT.t(), mRgba, -1);
-			//Size portSize = new Size(mRgbaT.size().height, mRgbaT.size().width);
-			//Imgproc.resize(mRgba, mRgba, portSize);
 			Imgproc.resize(mRgba, mRgba, mRgbaT.size());
-			
-//			Core.putText(mRgba, "[Width:" + mRgba.width() + "] [Height:" + mRgba.height() + "]", new Point(20 , 200),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//			
-//			Core.putText(mRgba, "[T Width:" + mRgbaT.width() + "] [THeight:" + mRgbaT.height() + "]", new Point(20 , 230),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 0, 255));
-//			
-//			Core.putText(mRgba, "[row:" + mRgba.cols() + "] [col:" + mRgba.rows() + "]", new Point(20 , 260),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//			
-//			Core.putText(mRgba, "[T row:" + mRgbaT.cols() + "] [T col:" + mRgbaT.rows() + "]", new Point(20 , 290),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 0, 255));
 			
 			Mat mGrayT = inputFrame.gray();
 			mGray = mGrayT.t();
 			Core.flip(mGrayT.t(), mGray, -1);
-			//Imgproc.resize(mGray, mGray, portSize);
 			Imgproc.resize(mGray, mGray, mGrayT.size());
 		} else {
 			mRgba = inputFrame.rgba();
@@ -460,12 +358,6 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			}
 		}
 		
-//		Core.putText(mRgba, "[Face Size:" + mAbsoluteFaceSize + "]", new Point(20 , 60),
-//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//		
-//		Core.putText(mRgba, "[ROW:" + mGray.rows() + "] [COL:" + mGray.cols() + "]", new Point(20 , 90),
-//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-
 		if (mZoomWindow == null || mZoomWindow2 == null) {
 			CreateAuxiliaryMats();
 		}
@@ -495,27 +387,23 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		Core.circle(mRgba, pos, 5, new Scalar(255, 255, 255, 255), 10);
 		Core.circle(mRgba, pos, 5, new Scalar(255, 0, 0, 255), 5);
 		
-		
+		// 화면 제일 큰 것만 하는 것이 나을 듯!!!
+		int maxFaceSize = 0;
+		int maxIdx = -1;
 		Rect[] facesArray = faces.toArray();
 		for (int i = 0; i < facesArray.length; i++) {
-//			Core.putText(mRgba, "[Rect No:" + i + "/" + facesArray.length + "]", new Point(20 , 120),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//
-//			Core.putText(mRgba, "[Learn CNT:" + learn_frames + "]", new Point(100, 200),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-			
+			if (maxFaceSize < facesArray[i].width) {
+				maxFaceSize = facesArray[i].width;
+				maxIdx = i;
+			}
+		}
+		
+		if (maxIdx >= 0) {
+			int i = maxIdx;
+
 			// 얼굴 영역 표시
 			Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
 			
-			// 센터 좌표 출력
-//			xCenter = (facesArray[i].x + facesArray[i].width + facesArray[i].x) / 2;
-//			yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
-//			Point center = new Point(xCenter, yCenter);
-//			Core.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
-//
-//			Core.putText(mRgba, "[" + center.x + "," + center.y + "]", new Point(center.x + 20, center.y + 20),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-
 			// 눈 주위 사각형 표시
 			Rect r = facesArray[i];
 //			// compute the eye area
@@ -529,21 +417,23 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			Rect eyearea_left = new Rect(r.x + r.width / 16 + (r.width - 2 * r.width / 16) / 2,
 					(int) (r.y + (r.height / 4.5)), (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
 
-//				Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
-//				Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
+			// 눈 부위 전체 표시
+			//Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
+			//Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
 
 			//if (learn_frames < 5) {
 				teplateR = get_template(mJavaDetectorEyeRight, eyearea_right, 24, 1);
 				teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24, 2);
-				learn_frames++;
+				//learn_frames++;
 			//} else {
 				match_eye(eyearea_right, teplateR, method);
-				//match_eye(eyearea_left, teplateL, method);
-				learn_frames = 0;
+				match_eye(eyearea_left, teplateL, method);
+				//learn_frames = 0;
 			//}
-//	
-//				Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2, mZoomWindow2.size());
-//				Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow, mZoomWindow.size());
+	
+			// 눈 부분 확대 표시
+			//Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2, mZoomWindow2.size());
+			//Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow, mZoomWindow.size());
 
 		}
 
@@ -576,8 +466,6 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 		Rect[] eyesArray = eyes.toArray(); // 1개를 찾아야 정상!
 		
-		//for (int i = 0; i < eyesArray.length; i++-) {
-		//	Rect e = eyesArray[i];
 		for (Rect e : eyesArray) {
 			//Core.rectangle(mRgba, e.tl(), e.br(), new Scalar(0, 0, 255, 255), 2);
 			
@@ -586,13 +474,13 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			// 눈에 대한 영역
 			Rect eye_only_rectangle = new Rect((int) e.tl().x, (int) (e.tl().y + e.height * 0.4), (int) e.width,
 					(int) (e.height * 0.6));
-			Core.rectangle(mRgba, eye_only_rectangle.tl(), eye_only_rectangle.br(), new Scalar(0, 0, 255, 255), 2);
+			//Core.rectangle(mRgba, eye_only_rectangle.tl(), eye_only_rectangle.br(), new Scalar(0, 0, 255, 255), 2);
 			
 			// reduce ROI
 			mROI = mGray.submat(eye_only_rectangle);
 			Mat vyrez = mRgba.submat(eye_only_rectangle);
 			
-			// 눈동자
+			// 동공 표시
 			Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI); // find the darkness point
 			Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2); // draw point to visualise pupil
 
@@ -622,7 +510,6 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 					}
-					
 				} else if (posX < -2) {
 					// Left
 					if (posY > 2) {
@@ -641,6 +528,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 				}
 			}			
 			
+			// 눈동자 부분 표시
 			iris.x = mmG.minLoc.x + eye_only_rectangle.x;
 			iris.y = mmG.minLoc.y + eye_only_rectangle.y;
 			eye_template = new Rect((int) iris.x - size / 2, (int) iris.y - size / 2, size, size);
@@ -654,23 +542,12 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	}
 
 	private void match_eye(Rect area, Mat mTemplate, int type) {
-		Point matchLoc;
 		Mat mROI = mGray.submat(area);
 		int result_cols = mROI.cols() - mTemplate.cols() + 1;
 		int result_rows = mROI.rows() - mTemplate.rows() + 1;
 		
-//		Core.putText(mRgba, "[mROI.cols()" + mROI.cols() + "] [mTemplate.cols()=" + mTemplate.cols() + "]}", new Point(20, 240),
-//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//		
-//		Core.putText(mRgba, "[mROI.cols()" + mROI.rows() + "] [mTemplate.cols()=" + mTemplate.rows() + "]}", new Point(20, 260),
-//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-		
 		// Check for bad template size
 		if (mTemplate.cols() == 0 || mTemplate.rows() == 0) {
-//			Core.putText(mRgba, "Bad Template:" + learn_frames, new Point(20, 260),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
-
-			//learn_frames = 0;
 			return;
 		}
 		
@@ -698,23 +575,28 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		}
 
 		Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
-		// there is difference in matching methods - best match is max/min value
-		if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
-			matchLoc = mmres.minLoc;
-		} else {
-			matchLoc = mmres.maxLoc;
-		}
 		
 		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
 				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
 
-		Core.circle(mRgba, mmres.minLoc, 2, new Scalar(255, 0, 0, 255), 2);
-		Core.circle(mRgba, mmres.maxLoc, 2, new Scalar(255, 0, 255, 255), 2);
+		// there is difference in matching methods - best match is max/min value
+		//Point matchLoc;
+		//if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
+		//	matchLoc = mmres.minLoc;
+		//} else {
+		//	matchLoc = mmres.maxLoc;
+		//}
+		
+		//Core.circle(mRgba, mmres.minLoc, 2, new Scalar(255, 0, 0, 255), 2);
+		//Core.circle(mRgba, mmres.maxLoc, 2, new Scalar(255, 0, 255, 255), 2);
+		//Mat vyrez = mRgba.submat(area);
+		//Core.circle(vyrez, matchLoc, 2, new Scalar(255, 255, 255, 255), 2);
 
-		Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
-		Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x, matchLoc.y + mTemplate.rows() + area.y);
-
+		// 눈동자 부분 표시
+		//Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
+		//Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x, matchLoc.y + mTemplate.rows() + area.y);
 		//Core.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0, 255));
+		
 		//Rect rec = new Rect(matchLoc_tx, matchLoc_ty);
 //		if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
 //			return mmres.maxVal;
