@@ -603,14 +603,19 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 				
 				Core.putText(mRgba, "cur x:" + mmG.minLoc.x + "cur y:" + mmG.minLoc.y, new Point(20, 330),
 						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-				int posX = (int) (mmG.minLoc.x - ((eye_only_rectangle.width / 2) + 3));
+				
+				int posX = (int) (mmG.minLoc.x - ((eye_only_rectangle.width / 2) + 6));
 				int posY = (int) (mmG.minLoc.y - ((eye_only_rectangle.height / 2) - 3));
-				if (posX > 0) {
+				
+				Core.putText(mRgba, "pos x:" + posX + "pos y:" + posY, new Point(20, 360),
+						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+				
+				if (posX > 2) {
 					// Right
-					if (posY > 0) {
+					if (posY > 2) {
 						Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else if (posY < 0){
+					} else if (posY < -2){
 						Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 					} else {
@@ -618,12 +623,12 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 					}
 					
-				} else if (posX < 0) {
+				} else if (posX < -2) {
 					// Left
-					if (posY > 0) {
+					if (posY > 2) {
 						Core.putText(mRgba, "Left-up", new Point(50, 80),
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else if (posY < 0){
+					} else if (posY < -2){
 						Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
 								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 					} else {
