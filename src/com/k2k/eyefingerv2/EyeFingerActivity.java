@@ -35,9 +35,11 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class EyeFingerActivity extends Activity implements CvCameraViewListener2, SensorEventListener {
 
@@ -56,17 +58,17 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private Mat teplateL;
 	int method = 0;
 
-	private MenuItem mItemFace50;
-	private MenuItem mItemFace40;
-	private MenuItem mItemFace30;
-	private MenuItem mItemFace20;
-	private MenuItem mItemType;
-	
-	private int mDetectorType = JAVA_DETECTOR;
-	private String[] mDetectorName;
-	
-	private SeekBar mMethodSeekbar;
-	private TextView mValue;
+//	private MenuItem mItemFace50;
+//	private MenuItem mItemFace40;
+//	private MenuItem mItemFace30;
+//	private MenuItem mItemFace20;
+//	private MenuItem mItemType;
+//	
+//	private int mDetectorType = JAVA_DETECTOR;
+//	private String[] mDetectorName;
+//	
+//	private SeekBar mMethodSeekbar;
+//	private TextView mValue;
 
 	private Mat mRgba;
 	private Mat mGray;
@@ -75,8 +77,8 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private Mat mZoomWindow2;
 
 	private File mCascadeFile;
-	private CascadeClassifier mJavaDetector;
-	private CascadeClassifier mJavaDetectorEye;
+	private CascadeClassifier mJavaDetectorFace;
+	private CascadeClassifier mJavaDetectorEyeRight;
 	private CascadeClassifier mJavaDetectorEyeLeft;
 
 	private float mRelativeFaceSize = 0.2f;
@@ -91,12 +93,26 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	SensorManager m_sensor_manager;
 	Sensor m_light_sensor;
 	
+	Point mAvgEyeR;
+	Point mAvgEyeL;
+	
+	public EyeFingerActivity() {
+		mAvgEyeR = new Point(0, 0);
+		mAvgEyeL = new Point(0, 0);
+		
+//		mDetectorName = new String[2];
+//		mDetectorName[JAVA_DETECTOR] = "Java";
+//
+//		Log.i(TAG, "Instantiated new " + this.getClass());
+	}
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_eye_finger);
 		
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		
 		mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.javaCameraViewEyeFinger);
 		mOpenCvCameraView.setCvCameraViewListener(this);
@@ -104,6 +120,21 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		Resources r = Resources.getSystem();
 		Configuration config = r.getConfiguration();
 		onConfigurationChanged(config);
+		
+//		if (canvas != null) {
+//			canvas.drawColor(0, android.graphics.PorterDuff.Mode.CLEAR);
+//			// canvas.drawBitmap(mCacheBitmap, (canvas.getWidth() -
+//			// mCacheBitmap.getWidth()) / 2, (canvas.getHeight() -
+//			// mCacheBitmap.getHeight()) / 2, null);
+//			// Change to support portrait view
+//			Matrix matrix = new Matrix();
+//			matrix.preTranslate((canvas.getWidth() - mCacheBitmap.getWidth()) / 2,
+//					(canvas.getHeight() - mCacheBitmap.getHeight()) / 2);
+//
+//			if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
+//				matrix.postRotate(90f, (canvas.getWidth()) / 2, (canvas.getHeight()) / 2);
+//			canvas.drawBitmap(mCacheBitmap, matrix, new Paint());
+//		}
 		
 //		mMethodSeekbar = (SeekBar) findViewById(R.id.methodSeekBar);
 //		mValue = (TextView) findViewById(R.id.method);
@@ -220,18 +251,18 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 					iser.close();
 					oser.close();
 					
-					mJavaDetector = new CascadeClassifier(mCascadeFile.getAbsolutePath());
-					if (mJavaDetector.empty()) {
+					mJavaDetectorFace = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+					if (mJavaDetectorFace.empty()) {
 						Log.e(TAG, "Failed to load cascade classifier");
-						mJavaDetector = null;
+						mJavaDetectorFace = null;
 					} else {
 						Log.i(TAG, "Loaded cascade classifier from " + mCascadeFile.getAbsolutePath());
 					}
 
-					mJavaDetectorEye = new CascadeClassifier(cascadeFileER.getAbsolutePath());
-					if (mJavaDetectorEye.empty()) {
+					mJavaDetectorEyeRight = new CascadeClassifier(cascadeFileER.getAbsolutePath());
+					if (mJavaDetectorEyeRight.empty()) {
 						Log.e(TAG, "Failed to load cascade classifier");
-						mJavaDetectorEye = null;
+						mJavaDetectorEyeRight = null;
 					} else {
 						Log.i(TAG, "Loaded cascade classifier from " + cascadeFileER.getAbsolutePath());
 					}
@@ -266,13 +297,6 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		}
 	};
 	
-	public EyeFingerActivity() {
-		mDetectorName = new String[2];
-		mDetectorName[JAVA_DETECTOR] = "Java";
-
-		Log.i(TAG, "Instantiated new " + this.getClass());
-	}
-	
 	@Override
 	public void onPause() {
 		super.onPause();
@@ -294,8 +318,19 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 	@Override
 	public void onCameraViewStarted(int width, int height) {
-		mGray = new Mat();
-		mRgba = new Mat();
+	    mRgba = new Mat(height, width, CvType.CV_8UC3);
+	    mGray = new Mat(height, width, CvType.CV_8UC3);
+
+//	    mResolutionList = mOpenCvCameraView.getResolutionList();
+//
+//	    for(Camera.Size resolution:mResolutionList){
+//	        if(resolution.width == 640){
+//	        mOpenCvCameraView.setResolution(resolution);
+//	        }
+//	    }
+//		
+//		mGray = new Mat();
+//		mRgba = new Mat();
 	}
 
 	@Override
@@ -377,7 +412,16 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 //
 //	        Core.flip(mRgbaT.t(), mRgba, 0);
 
-	        
+//			mRgba = inputFrame.rgba();
+//			Mat mRgbaT = mRgba.t();
+//			Core.flip(mRgba.t(), mRgbaT, -1);
+//			Imgproc.resize(mRgbaT, mRgba, mRgba.size());
+//			
+//			mGray = inputFrame.rgba();
+//			Mat mGrayT = mGray.t();
+//			Core.flip(mGray.t(), mGrayT, -1);
+//			Imgproc.resize(mGrayT, mGray, mGray.size());
+			 
 			Mat mRgbaT = inputFrame.rgba();
 			mRgba = mRgbaT.t();
 			Core.flip(mRgbaT.t(), mRgba, -1);
@@ -385,8 +429,17 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			//Imgproc.resize(mRgba, mRgba, portSize);
 			Imgproc.resize(mRgba, mRgba, mRgbaT.size());
 			
-			Core.putText(mRgba, "[Width:" + mRgbaT.size().width + "] [Height:" + mRgbaT.size().height + "]", new Point(20 , 200),
-					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			Core.putText(mRgba, "[Width:" + mRgba.width() + "] [Height:" + mRgba.height() + "]", new Point(20 , 200),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			
+//			Core.putText(mRgba, "[T Width:" + mRgbaT.width() + "] [THeight:" + mRgbaT.height() + "]", new Point(20 , 230),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 0, 255));
+//			
+//			Core.putText(mRgba, "[row:" + mRgba.cols() + "] [col:" + mRgba.rows() + "]", new Point(20 , 260),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			
+//			Core.putText(mRgba, "[T row:" + mRgbaT.cols() + "] [T col:" + mRgbaT.rows() + "]", new Point(20 , 290),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 0, 255));
 			
 			Mat mGrayT = inputFrame.gray();
 			mGray = mGrayT.t();
@@ -395,155 +448,105 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			Imgproc.resize(mGray, mGray, mGrayT.size());
 		} else {
 			mRgba = inputFrame.rgba();
+			Core.flip(mRgba, mRgba, 1);
 			mGray = inputFrame.gray();
+			Core.flip(mGray, mGray, 1);
 		}
 			
-		// Portrait Mode
-		{
-			if (mAbsoluteFaceSize == 0) {
-				int height = mGray.rows(); // 480
-				if (Math.round(height * mRelativeFaceSize) > 0) {
-					mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize); // 480*0.2 = 96
-				}
-			}
-			
-			Core.putText(mRgba, "[Face Size:" + mAbsoluteFaceSize + "]", new Point(20 , 60),
-					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-			
-			Core.putText(mRgba, "[ROW:" + mGray.rows() + "] [COL:" + mGray.cols() + "]", new Point(20 , 90),
-					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-
-			if (mZoomWindow == null || mZoomWindow2 == null) {
-				CreateAuxiliaryMats();
-			}
-
-			MatOfRect faces = new MatOfRect();
-			
-			if (mJavaDetector != null) {
-				//CASCADE_DO_CANNY_PRUNING = 1, CASCADE_SCALE_IMAGE = 2,  CASCADE_FIND_BIGGEST_OBJECT = 4, CASCADE_DO_ROUGH_SEARCH = 8;
-				mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, Objdetect.CASCADE_DO_ROUGH_SEARCH, // | Objdetect.CASCADE_SCALE_IMAGE, 
-						new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
-			}
-			
-			//Point tl = new Point();
-			//Point br = new Point();
-			
-			Rect[] facesArray = faces.toArray();
-			for (int i = 0; i < facesArray.length; i++) {
-				Core.putText(mRgba, "[Rect No:" + i + "/" + facesArray.length + "]", new Point(20 , 120),
-						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-
-				
-//				tl.x = facesArray[i].tl().y;
-//				tl.y = facesArray[i].tl().x;
-//				br.x = facesArray[i].br().y;
-//				br.y = facesArray[i].br().x;
-//				Core.rectangle(mRgba, tl, br, FACE_RECT_COLOR, 3);
-				
-				Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
-				// 센터 좌표 출력
-				xCenter = (facesArray[i].x + facesArray[i].width + facesArray[i].x) / 2;
-				yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
-				Point center = new Point(xCenter, yCenter);
-	
-				Core.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
-	
-				Core.putText(mRgba, "[" + center.x + "," + center.y + "]", new Point(center.x + 20, center.y + 20),
-						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-	
-				// 눈 주위 사각형 표시
-				Rect r = facesArray[i];
-//				// compute the eye area
-//				Rect eyearea = new Rect(r.x + r.width / 8, (int) (r.y + (r.height / 4.5)), r.width - 2 * r.width / 8,
-//						(int) (r.height / 3.0));
-				
-				// split it
-				Rect eyearea_right = new Rect(r.x + r.width / 16, (int) (r.y + (r.height / 4.5)),
-						(r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
-				Rect eyearea_left = new Rect(r.x + r.width / 16 + (r.width - 2 * r.width / 16) / 2,
-						(int) (r.y + (r.height / 4.5)), (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
-	
-//				Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
-//				Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
-	
-				Core.putText(mRgba, "[Learn CNT:" + learn_frames + "]", new Point(100, 200),
-						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-				
-				if (learn_frames < 5) {
-					teplateR = get_template(mJavaDetectorEye, eyearea_right, 24);
-					teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24);
-					learn_frames++;
-				} else {
-					match_eye(eyearea_right, teplateR, method);
-					match_eye(eyearea_left, teplateL, method);
-				}
-//	
-//				Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2, mZoomWindow2.size());
-//				Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow, mZoomWindow.size());
-	
-			}
-		}
-
-/*		// Landscape Mode
-		{
-				if (mAbsoluteFaceSize == 0) {
-			int height = mGray.rows();
+		if (mAbsoluteFaceSize == 0) {
+			int height = mGray.rows(); // 480
 			if (Math.round(height * mRelativeFaceSize) > 0) {
-				mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize);
+				mAbsoluteFaceSize = Math.round(height * mRelativeFaceSize); // 480*0.2 = 96
 			}
 		}
+		
+//		Core.putText(mRgba, "[Face Size:" + mAbsoluteFaceSize + "]", new Point(20 , 60),
+//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//		
+//		Core.putText(mRgba, "[ROW:" + mGray.rows() + "] [COL:" + mGray.cols() + "]", new Point(20 , 90),
+//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 
 		if (mZoomWindow == null || mZoomWindow2 == null) {
 			CreateAuxiliaryMats();
 		}
 
 		MatOfRect faces = new MatOfRect();
-
-		if (mJavaDetector != null) {
-			mJavaDetector.detectMultiScale(mGray, faces, 1.1, 2, 2, new Size(mAbsoluteFaceSize, mAbsoluteFaceSize),
-					new Size());
+		
+		if (mJavaDetectorFace != null) {
+			//CASCADE_DO_CANNY_PRUNING = 1, CASCADE_SCALE_IMAGE = 2,  CASCADE_FIND_BIGGEST_OBJECT = 4, CASCADE_DO_ROUGH_SEARCH = 8;
+			mJavaDetectorFace.detectMultiScale(mGray, faces, 1.1, 2, 0 | Objdetect.CASCADE_SCALE_IMAGE, 
+					new Size(mAbsoluteFaceSize, mAbsoluteFaceSize), new Size());
 		}
 		
-			Rect[] facesArray = faces.toArray();
-			for (int i = 0; i < facesArray.length; i++) {
-				Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
-				xCenter = (facesArray[i].x + facesArray[i].width + facesArray[i].x) / 2;
-				yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
-				Point center = new Point(xCenter, yCenter);
-	
-				Core.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
-	
-				Core.putText(mRgba, "[" + center.x + "," + center.y + "]", new Point(center.x + 20, center.y + 20),
-						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-	
-				Rect r = facesArray[i];
-				// compute the eye area
-				Rect eyearea = new Rect(r.x + r.width / 8, (int) (r.y + (r.height / 4.5)), r.width - 2 * r.width / 8,
-						(int) (r.height / 3.0));
-				// split it
-				Rect eyearea_right = new Rect(r.x + r.width / 16, (int) (r.y + (r.height / 4.5)),
-						(r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
-				Rect eyearea_left = new Rect(r.x + r.width / 16 + (r.width - 2 * r.width / 16) / 2,
-						(int) (r.y + (r.height / 4.5)), (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
-	
-				Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
-				Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
-	
-				if (learn_frames < 5) {
-					teplateR = get_template(mJavaDetectorEye, eyearea_right, 24);
-					teplateL = get_template(mJavaDetectorEye, eyearea_left, 24);
-					learn_frames++;
-				} else {
-					match_eye(eyearea_right, teplateR, method);
-					match_eye(eyearea_left, teplateL, method);
-				}
-	
-				Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2, mZoomWindow2.size());
-				Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow, mZoomWindow.size());
-	
-			}
+		Point pos = new Point(50, 50);
+		// White & Red
+		Core.circle(mRgba, pos, 5, new Scalar(255, 255, 255, 255), 10);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 0, 0, 255), 5);
+		
+		pos = new Point(mGray.width() - 50, 50);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 255, 255, 255), 10);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 0, 0, 255), 5);
+		
+		pos = new Point(50, mGray.height() - 50);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 255, 255, 255), 10);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 0, 0, 255), 5);
+		
+		pos = new Point(mGray.width() - 50, mGray.height() - 50);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 255, 255, 255), 10);
+		Core.circle(mRgba, pos, 5, new Scalar(255, 0, 0, 255), 5);
+		
+		
+		Rect[] facesArray = faces.toArray();
+		for (int i = 0; i < facesArray.length; i++) {
+//			Core.putText(mRgba, "[Rect No:" + i + "/" + facesArray.length + "]", new Point(20 , 120),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//
+//			Core.putText(mRgba, "[Learn CNT:" + learn_frames + "]", new Point(100, 200),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+			
+			// 얼굴 영역 표시
+			Core.rectangle(mRgba, facesArray[i].tl(), facesArray[i].br(), FACE_RECT_COLOR, 3);
+			
+			// 센터 좌표 출력
+//			xCenter = (facesArray[i].x + facesArray[i].width + facesArray[i].x) / 2;
+//			yCenter = (facesArray[i].y + facesArray[i].y + facesArray[i].height) / 2;
+//			Point center = new Point(xCenter, yCenter);
+//			Core.circle(mRgba, center, 10, new Scalar(255, 0, 0, 255), 3);
+//
+//			Core.putText(mRgba, "[" + center.x + "," + center.y + "]", new Point(center.x + 20, center.y + 20),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+
+			// 눈 주위 사각형 표시
+			Rect r = facesArray[i];
+//			// compute the eye area
+//			Rect eyearea = new Rect(r.x + r.width / 8, (int) (r.y + (r.height / 4.5)), r.width - 2 * r.width / 8,
+//						(int) (r.height / 3.0));
+//			Core.rectangle(mRgba, eyearea.tl(), eyearea.br(), new Scalar(255, 0, 0, 255), 2);
+
+			// split it
+			Rect eyearea_right = new Rect(r.x + r.width / 16, (int) (r.y + (r.height / 4.5)),
+					(r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
+			Rect eyearea_left = new Rect(r.x + r.width / 16 + (r.width - 2 * r.width / 16) / 2,
+					(int) (r.y + (r.height / 4.5)), (r.width - 2 * r.width / 16) / 2, (int) (r.height / 3.0));
+
+//				Core.rectangle(mRgba, eyearea_left.tl(), eyearea_left.br(), new Scalar(255, 0, 0, 255), 2);
+//				Core.rectangle(mRgba, eyearea_right.tl(), eyearea_right.br(), new Scalar(255, 0, 0, 255), 2);
+
+			//if (learn_frames < 5) {
+				teplateR = get_template(mJavaDetectorEyeRight, eyearea_right, 24, 1);
+				teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24, 2);
+				learn_frames++;
+			//} else {
+				match_eye(eyearea_right, teplateR, method);
+				//match_eye(eyearea_left, teplateL, method);
+				learn_frames = 0;
+			//}
+//	
+//				Imgproc.resize(mRgba.submat(eyearea_left), mZoomWindow2, mZoomWindow2.size());
+//				Imgproc.resize(mRgba.submat(eyearea_right), mZoomWindow, mZoomWindow.size());
+
 		}
-*/
+
 		return mRgba;
 	}
 	
@@ -560,6 +563,90 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		}
 
 	}
+	
+	private Mat get_template(CascadeClassifier clasificator, Rect area, int size, int mode) {
+		Mat template = new Mat();
+		Mat mROI = mGray.submat(area);
+		MatOfRect eyes = new MatOfRect();
+		Point iris = new Point();
+		Rect eye_template = new Rect();
+		clasificator.detectMultiScale(mROI, eyes, 1.15, 2, Objdetect.CASCADE_FIND_BIGGEST_OBJECT
+				| Objdetect.CASCADE_SCALE_IMAGE, new Size(30, 30), new Size());
+		//clasificator.detectMultiScale(mROI, eyes, 1.1, 2, 0 | Objdetect.CASCADE_SCALE_IMAGE, new Size(30, 30), new Size());
+
+		Rect[] eyesArray = eyes.toArray(); // 1개를 찾아야 정상!
+		
+		//for (int i = 0; i < eyesArray.length; i++-) {
+		//	Rect e = eyesArray[i];
+		for (Rect e : eyesArray) {
+			//Core.rectangle(mRgba, e.tl(), e.br(), new Scalar(0, 0, 255, 255), 2);
+			
+			e.x = area.x + e.x; // 전체 그림에서 위치 x
+			e.y = area.y + e.y; // 전체 그림에서 위치 y
+			// 눈에 대한 영역
+			Rect eye_only_rectangle = new Rect((int) e.tl().x, (int) (e.tl().y + e.height * 0.4), (int) e.width,
+					(int) (e.height * 0.6));
+			Core.rectangle(mRgba, eye_only_rectangle.tl(), eye_only_rectangle.br(), new Scalar(0, 0, 255, 255), 2);
+			
+			// reduce ROI
+			mROI = mGray.submat(eye_only_rectangle);
+			Mat vyrez = mRgba.submat(eye_only_rectangle);
+			
+			// 눈동자
+			Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI); // find the darkness point
+			Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2); // draw point to visualise pupil
+
+			if (mode == 1) {
+
+				Core.putText(mRgba, "width:" + eye_only_rectangle.width + "height:" + eye_only_rectangle.height, new Point(20, 300),
+						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+				
+				Core.putText(mRgba, "cur x:" + mmG.minLoc.x + "cur y:" + mmG.minLoc.y, new Point(20, 330),
+						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+				int posX = (int) (mmG.minLoc.x - ((eye_only_rectangle.width / 2) + 3));
+				int posY = (int) (mmG.minLoc.y - ((eye_only_rectangle.height / 2) - 3));
+				if (posX > 0) {
+					// Right
+					if (posY > 0) {
+						Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					} else if (posY < 0){
+						Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					} else {
+						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					}
+					
+				} else if (posX < 0) {
+					// Left
+					if (posY > 0) {
+						Core.putText(mRgba, "Left-up", new Point(50, 80),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					} else if (posY < 0){
+						Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					} else {
+						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+					}
+				} else {
+					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+				}
+			}			
+			
+			iris.x = mmG.minLoc.x + eye_only_rectangle.x;
+			iris.y = mmG.minLoc.y + eye_only_rectangle.y;
+			eye_template = new Rect((int) iris.x - size / 2, (int) iris.y - size / 2, size, size);
+			//Core.rectangle(mRgba, eye_template.tl(), eye_template.br(), new Scalar(255, 0, 0, 255), 2);
+			
+			template = (mGray.submat(eye_template)).clone(); // copy area to template
+			
+			return template;
+		}
+		return template;
+	}
 
 	private void match_eye(Rect area, Mat mTemplate, int type) {
 		Point matchLoc;
@@ -567,17 +654,21 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		int result_cols = mROI.cols() - mTemplate.cols() + 1;
 		int result_rows = mROI.rows() - mTemplate.rows() + 1;
 		
-		Core.putText(mRgba, "[mROI.cols()" + mROI.cols() + "] [mTemplate.cols()=" + mTemplate.cols() + "]}", new Point(100, 240),
-				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-		
-		Core.putText(mRgba, "[mROI.cols()" + mROI.rows() + "] [mTemplate.cols()=" + mTemplate.rows() + "]}", new Point(100, 260),
-				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//		Core.putText(mRgba, "[mROI.cols()" + mROI.cols() + "] [mTemplate.cols()=" + mTemplate.cols() + "]}", new Point(20, 240),
+//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//		
+//		Core.putText(mRgba, "[mROI.cols()" + mROI.rows() + "] [mTemplate.cols()=" + mTemplate.rows() + "]}", new Point(20, 260),
+//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 		
 		// Check for bad template size
 		if (mTemplate.cols() == 0 || mTemplate.rows() == 0) {
-			learn_frames = 0;
+//			Core.putText(mRgba, "Bad Template:" + learn_frames, new Point(20, 260),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+
+			//learn_frames = 0;
 			return;
 		}
+		
 		Mat mResult = new Mat(result_cols, result_rows, CvType.CV_8U);
 
 		switch (type) {
@@ -608,51 +699,23 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		} else {
 			matchLoc = mmres.maxLoc;
 		}
+		
+		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
+				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+
+		Core.circle(mRgba, mmres.minLoc, 2, new Scalar(255, 0, 0, 255), 2);
+		Core.circle(mRgba, mmres.maxLoc, 2, new Scalar(255, 0, 255, 255), 2);
 
 		Point matchLoc_tx = new Point(matchLoc.x + area.x, matchLoc.y + area.y);
 		Point matchLoc_ty = new Point(matchLoc.x + mTemplate.cols() + area.x, matchLoc.y + mTemplate.rows() + area.y);
 
-		Core.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0, 255));
+		//Core.rectangle(mRgba, matchLoc_tx, matchLoc_ty, new Scalar(255, 255, 0, 255));
 		//Rect rec = new Rect(matchLoc_tx, matchLoc_ty);
 //		if (type == TM_SQDIFF || type == TM_SQDIFF_NORMED) {
 //			return mmres.maxVal;
 //		} else {
 //			return mmres.minVal;
 //		}
-	}
-
-	private Mat get_template(CascadeClassifier clasificator, Rect area, int size) {
-		Mat template = new Mat();
-		Mat mROI = mGray.submat(area);
-		MatOfRect eyes = new MatOfRect();
-		Point iris = new Point();
-		Rect eye_template = new Rect();
-		clasificator.detectMultiScale(mROI, eyes, 1.15, 2, Objdetect.CASCADE_FIND_BIGGEST_OBJECT
-				| Objdetect.CASCADE_SCALE_IMAGE, new Size(30, 30), new Size());
-
-		Rect[] eyesArray = eyes.toArray();
-		for (int i = 0; i < eyesArray.length; i++) {
-			Rect e = eyesArray[i];
-			e.x = area.x + e.x;
-			e.y = area.y + e.y;
-			Rect eye_only_rectangle = new Rect((int) e.tl().x, (int) (e.tl().y + e.height * 0.4), (int) e.width,
-					(int) (e.height * 0.6));
-			// reduce ROI
-			mROI = mGray.submat(eye_only_rectangle);
-			Mat vyrez = mRgba.submat(eye_only_rectangle);
-			// find the darkness point
-			Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI);
-			// draw point to visualise pupil
-			Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2);
-			iris.x = mmG.minLoc.x + eye_only_rectangle.x;
-			iris.y = mmG.minLoc.y + eye_only_rectangle.y;
-			eye_template = new Rect((int) iris.x - size / 2, (int) iris.y - size / 2, size, size);
-			Core.rectangle(mRgba, eye_template.tl(), eye_template.br(), new Scalar(255, 0, 0, 255), 2);
-			// copy area to template
-			template = (mGray.submat(eye_template)).clone();
-			return template;
-		}
-		return template;
 	}
 
 	@Override
@@ -675,8 +738,30 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		
 		if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT) {
 			// 배경 화면 교체 처리
+			//mOpenCvCameraView.ROTATION
 		} else if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
 			// 배경 화면 교체 처리
 		}
+		
+		int rotation = getWindowManager().getDefaultDisplay().getRotation();
+		int degrees = 0;
+        switch (rotation)
+        {
+        case Surface.ROTATION_0:
+            degrees = 0;
+            break;
+        case Surface.ROTATION_90:
+            degrees = 90;
+            break;
+        case Surface.ROTATION_180:
+            degrees = 180;
+            break;
+        case Surface.ROTATION_270:
+            degrees = 270;
+            break;
+        }
+        
+        Toast toast = Toast.makeText(this, "ROTATION : " + degrees, Toast.LENGTH_SHORT);
+        toast.show();
 	}
 }
