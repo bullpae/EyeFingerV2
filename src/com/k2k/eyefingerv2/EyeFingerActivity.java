@@ -51,7 +51,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private static final int TM_CCORR = 4;
 	private static final int TM_CCORR_NORMED = 5;
 
-	//private int learn_frames = 0;
+	private int learn_frames = 0;
 	private Mat teplateR;
 	private Mat teplateL;
 	int method = 0;
@@ -424,11 +424,11 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			//if (learn_frames < 5) {
 				teplateR = get_template(mJavaDetectorEyeRight, eyearea_right, 24, 1);
 				teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24, 2);
-				//learn_frames++;
+				learn_frames++;
 			//} else {
-				match_eye(eyearea_right, teplateR, method);
-				match_eye(eyearea_left, teplateL, method);
-				//learn_frames = 0;
+			//	match_eye(eyearea_right, teplateR, method, 1);
+			//	match_eye(eyearea_left, teplateL, method, 2);
+			//	//learn_frames = 0;
 			//}
 	
 			// 눈 부분 확대 표시
@@ -474,9 +474,9 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			// 눈에 대한 영역
 			Rect eye_only_rectangle = new Rect((int) e.tl().x, (int) (e.tl().y + e.height * 0.4), (int) e.width,
 					(int) (e.height * 0.6));
-			//Core.rectangle(mRgba, eye_only_rectangle.tl(), eye_only_rectangle.br(), new Scalar(0, 0, 255, 255), 2);
+			Core.rectangle(mRgba, eye_only_rectangle.tl(), eye_only_rectangle.br(), new Scalar(0, 0, 255, 255), 2);
 			
-			// reduce ROI
+			// 동공 표시 reduce ROI
 			mROI = mGray.submat(eye_only_rectangle);
 			Mat vyrez = mRgba.submat(eye_only_rectangle);
 			
@@ -492,40 +492,54 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 				Core.putText(mRgba, "cur x:" + mmG.minLoc.x + "cur y:" + mmG.minLoc.y, new Point(20, 330),
 						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 				
-				int posX = (int) (mmG.minLoc.x - ((eye_only_rectangle.width / 2) + 6));
-				int posY = (int) (mmG.minLoc.y - ((eye_only_rectangle.height / 2) - 3));
-				
-				Core.putText(mRgba, "pos x:" + posX + "pos y:" + posY, new Point(20, 360),
-						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
-				
-				if (posX > 2) {
-					// Right
-					if (posY > 2) {
-						Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else if (posY < -2){
-						Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else {
-						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					}
-				} else if (posX < -2) {
+				if (mmG.minLoc.x < (eye_only_rectangle.width / 2) - (eye_only_rectangle.width / 9)) {
 					// Left
-					if (posY > 2) {
-						Core.putText(mRgba, "Left-up", new Point(50, 80),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else if (posY < -2){
-						Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					} else {
-						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-					}
+					Core.putText(mRgba, "Left", new Point(50, mGray.height() / 2),
+							Core.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(255, 255, 255, 255));
+				} else if (mmG.minLoc.x > (eye_only_rectangle.width / 2) + (eye_only_rectangle.width / 9)) {
+					// Right
+					Core.putText(mRgba, "Right", new Point(mGray.width() - 150, mGray.height() / 2),
+							Core.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(255, 255, 255, 255));
 				} else {
+					// Center
 					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+							Core.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(255, 255, 255, 255));
 				}
+				
+//				int posX = (int) (mmG.minLoc.x - ((eye_only_rectangle.width / 2) + 6));
+//				int posY = (int) (mmG.minLoc.y - ((eye_only_rectangle.height / 2) - 3));
+//				
+//				Core.putText(mRgba, "pos x:" + posX + "pos y:" + posY, new Point(20, 360),
+//						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+//				
+//				if (posX > 2) {
+//					// Right
+//					if (posY > 2) {
+//						Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					} else if (posY < -2){
+//						Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					} else {
+//						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					}
+//				} else if (posX < -2) {
+//					// Left
+//					if (posY > 2) {
+//						Core.putText(mRgba, "Left-up", new Point(50, 80),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					} else if (posY < -2){
+//						Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					} else {
+//						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					}
+//				} else {
+//					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				}
 			}			
 			
 			// 눈동자 부분 표시
@@ -541,7 +555,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		return template;
 	}
 
-	private void match_eye(Rect area, Mat mTemplate, int type) {
+	private void match_eye(Rect area, Mat mTemplate, int type, int mode) {
 		Mat mROI = mGray.submat(area);
 		int result_cols = mROI.cols() - mTemplate.cols() + 1;
 		int result_rows = mROI.rows() - mTemplate.rows() + 1;
@@ -576,8 +590,59 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 		Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
 		
-		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
-				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+//		Mat vyrez = mRgba.submat(area);
+//		
+//		// 동공 표시
+//		Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI); // find the darkness point
+//		Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2); // draw point to visualise pupil
+//
+//		
+//		if (mode == 1) {
+//
+//			Core.putText(mRgba, "width:" + area.width + "height:" + area.height, new Point(20, 300),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			
+//			Core.putText(mRgba, "cur x:" + mmres.minLoc.x + "cur y:" + mmres.minLoc.y, new Point(20, 330),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			
+//			int posX = (int) (mmres.minLoc.x - ((area.width / 2) + 6));
+//			int posY = (int) (mmres.minLoc.y - ((area.height / 2) - 3));
+//			
+//			Core.putText(mRgba, "pos x:" + posX + "pos y:" + posY, new Point(20, 360),
+//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+//			
+//			if (posX > 2) {
+//				// Right
+//				if (posY > 2) {
+//					Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				} else if (posY < -2){
+//					Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				} else {
+//					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				}
+//			} else if (posX < -2) {
+//				// Left
+//				if (posY > 2) {
+//					Core.putText(mRgba, "Left-up", new Point(50, 80),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				} else if (posY < -2){
+//					Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				} else {
+//					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//				}
+//			} else {
+//				Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
+//						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//			}
+//		}			
+		
+//		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
+//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
 
 		// there is difference in matching methods - best match is max/min value
 		//Point matchLoc;
