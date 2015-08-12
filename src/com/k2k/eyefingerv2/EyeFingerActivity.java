@@ -23,25 +23,30 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.Objdetect;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
+import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Toast;
 
 public class EyeFingerActivity extends Activity implements CvCameraViewListener2, SensorEventListener {
 
-	private static final String TAG = "EyeFingerActivityS";
+	private static final String TAG = EyeFingerActivity.class.getSimpleName();
 	private static final Scalar FACE_RECT_COLOR = new Scalar(0, 255, 0, 255);
 	public static final int JAVA_DETECTOR = 0;
 	private static final int TM_SQDIFF = 0;
@@ -50,6 +55,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	private static final int TM_CCOEFF_NORMED = 3;
 	private static final int TM_CCORR = 4;
 	private static final int TM_CCORR_NORMED = 5;
+	private int currentApiVersion;
 
 	private int learn_frames = 0;
 	private Mat teplateR;
@@ -91,28 +97,59 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 	SensorManager m_sensor_manager;
 	Sensor m_light_sensor;
 	
-	Point mAvgEyeR;
-	Point mAvgEyeL;
-	
-	public EyeFingerActivity() {
-		mAvgEyeR = new Point(0, 0);
-		mAvgEyeL = new Point(0, 0);
-		
-//		mDetectorName = new String[2];
-//		mDetectorName[JAVA_DETECTOR] = "Java";
-//
-//		Log.i(TAG, "Instantiated new " + this.getClass());
+	Point mAvgEyeR = new Point(0, 0);
+	Point mAvgEyeL = new Point(0, 0);
+
+	public static void startCover(Context context, boolean overriding) {
+		Intent i = new Intent(context, EyeFingerActivity.class);
+		i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+
+		context.startActivity(i);
+		if(overriding) {
+			((Activity) context).overridePendingTransition(R.anim.animation_enter, R.anim.animation_leave);
+		}
+		if(overriding) {
+			((Activity) context).finish();
+		}
 	}
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON|
+				WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD |
+				WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+
+
+		currentApiVersion = android.os.Build.VERSION.SDK_INT;
+
+		// This work only for android 4.4+
+		if(currentApiVersion >= Build.VERSION_CODES.KITKAT)
+		{
+			final int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+					| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+			
+			getWindow().getDecorView().setSystemUiVisibility(flags);
+
+			// Code below is to handle presses of Volume up or Volume down.
+			// Without this, after pressing volume buttons, the navigation bar will
+			// show up and won't hide
+			final View decorView = getWindow().getDecorView();
+			decorView.setOnSystemUiVisibilityChangeListener(new View.OnSystemUiVisibilityChangeListener() {
+				@Override
+				public void onSystemUiVisibilityChange(int visibility) {
+					if ((visibility & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
+						decorView.setSystemUiVisibility(flags);
+					}
+				}
+			});
+		}
+
 		setContentView(R.layout.activity_eye_finger);
-		
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		//getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-//		getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED 
-//				| WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+		startService(new Intent(getApplicationContext(), MonitorService.class));
 		
 		mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.javaCameraViewEyeFinger);
 		mOpenCvCameraView.setCvCameraViewListener(this);
@@ -326,24 +363,53 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 	@Override
 	public void onCameraViewStopped() {
-		mGray.release();
-		mRgba.release();
-		mZoomWindow.release();
-		mZoomWindow2.release();
+		if(mGray!=null) {
+			mGray.release();
+		}
+		if(mRgba!=null) {
+			mRgba.release();
+		}
+		if(mZoomWindow!=null) {
+			mZoomWindow.release();
+		}
+		if(mZoomWindow2!=null) {
+			mZoomWindow2.release();
+		}
 	}
 
 	@Override
 	public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 		if (mOrientationMode == Configuration.ORIENTATION_PORTRAIT) {
- 			Mat mRgbaT = inputFrame.rgba();
-			mRgba = mRgbaT.t();
-			Core.flip(mRgbaT.t(), mRgba, -1);
-			Imgproc.resize(mRgba, mRgba, mRgbaT.size());
-			
-			Mat mGrayT = inputFrame.gray();
-			mGray = mGrayT.t();
-			Core.flip(mGrayT.t(), mGray, -1);
-			Imgproc.resize(mGray, mGray, mGrayT.size());
+			/*if(mGray!=null) {
+				mGray.release();
+			}
+			if(mRgba!=null) {
+				mRgba.release();
+			}*/
+
+ 			Mat mRgbaT = inputFrame.rgba().t();
+			int height = inputFrame.rgba().height();
+			int width = inputFrame.rgba().width();
+			mRgba = new Mat(width, height, CvType.CV_8UC3);
+			Core.flip(mRgbaT, mRgba, -1);
+			mRgbaT.release();
+			Imgproc.resize(mRgba, mRgba, inputFrame.rgba().size());
+
+			Mat mGrayT = inputFrame.gray().t();
+			mGray = new Mat(width, height, CvType.CV_8UC3);
+			Core.flip(mGrayT, mGray, -1);
+			mGrayT.release();
+			Imgproc.resize(mGray, mGray, inputFrame.gray().size());
+
+			/*mRgba = inputFrame.rgba();
+			Mat mRgbaT = mRgba.t();
+			Core.flip(mRgba.t(), mRgbaT, -1);
+			Imgproc.resize(mRgbaT, mRgbaT, mRgba.size());
+
+			mGray = inputFrame.gray();
+			Mat mGrayT = mGray.t();
+			Core.flip(mGray.t(), mRgbaT, -1);
+			Imgproc.resize(mGrayT, mGrayT, mGray.size());*/
 		} else {
 			mRgba = inputFrame.rgba();
 			Core.flip(mRgba, mRgba, 1);
@@ -426,9 +492,9 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 				teplateL = get_template(mJavaDetectorEyeLeft, eyearea_left, 24, 2);
 				learn_frames++;
 			//} else {
-			//	match_eye(eyearea_right, teplateR, method, 1);
-			//	match_eye(eyearea_left, teplateL, method, 2);
-			//	//learn_frames = 0;
+				//match_eye(eyearea_right, teplateR, method);
+				//match_eye(eyearea_left, teplateL, method);
+				//learn_frames = 0;
 			//}
 	
 			// 눈 부분 확대 표시
@@ -484,7 +550,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 			Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI); // find the darkness point
 			Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2); // draw point to visualise pupil
 
-			if (mode == 1) {
+			if (mode == 1 && learn_frames > 5) {
 
 				Core.putText(mRgba, "width:" + eye_only_rectangle.width + "height:" + eye_only_rectangle.height, new Point(20, 300),
 						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
@@ -492,11 +558,13 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 				Core.putText(mRgba, "cur x:" + mmG.minLoc.x + "cur y:" + mmG.minLoc.y, new Point(20, 330),
 						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
 				
-				if (mmG.minLoc.x < (eye_only_rectangle.width / 2) - (eye_only_rectangle.width / 9)) {
+				if (mmG.minLoc.x < (eye_only_rectangle.width / 2) - (eye_only_rectangle.width / 4)) {
 					// Left
 					Core.putText(mRgba, "Left", new Point(50, mGray.height() / 2),
 							Core.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(255, 255, 255, 255));
-				} else if (mmG.minLoc.x > (eye_only_rectangle.width / 2) + (eye_only_rectangle.width / 9)) {
+					
+					onUnlock();
+				} else if (mmG.minLoc.x > (eye_only_rectangle.width / 2) + (eye_only_rectangle.width / 6)) {
 					// Right
 					Core.putText(mRgba, "Right", new Point(mGray.width() - 150, mGray.height() / 2),
 							Core.FONT_HERSHEY_SIMPLEX, 1.5, new Scalar(255, 255, 255, 255));
@@ -523,6 +591,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 //					} else {
 //						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
 //								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//						onUnlock();
 //					}
 //				} else if (posX < -2) {
 //					// Left
@@ -535,10 +604,12 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 //					} else {
 //						Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
 //								Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//						onUnlock();
 //					}
 //				} else {
 //					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
 //							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
+//					onUnlock();
 //				}
 			}			
 			
@@ -555,7 +626,7 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 		return template;
 	}
 
-	private void match_eye(Rect area, Mat mTemplate, int type, int mode) {
+	private void match_eye(Rect area, Mat mTemplate, int type) {
 		Mat mROI = mGray.submat(area);
 		int result_cols = mROI.cols() - mTemplate.cols() + 1;
 		int result_rows = mROI.rows() - mTemplate.rows() + 1;
@@ -590,59 +661,8 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
 
 		Core.MinMaxLocResult mmres = Core.minMaxLoc(mResult);
 		
-//		Mat vyrez = mRgba.submat(area);
-//		
-//		// 동공 표시
-//		Core.MinMaxLocResult mmG = Core.minMaxLoc(mROI); // find the darkness point
-//		Core.circle(vyrez, mmG.minLoc, 2, new Scalar(255, 255, 255, 255), 2); // draw point to visualise pupil
-//
-//		
-//		if (mode == 1) {
-//
-//			Core.putText(mRgba, "width:" + area.width + "height:" + area.height, new Point(20, 300),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//			
-//			Core.putText(mRgba, "cur x:" + mmres.minLoc.x + "cur y:" + mmres.minLoc.y, new Point(20, 330),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//			
-//			int posX = (int) (mmres.minLoc.x - ((area.width / 2) + 6));
-//			int posY = (int) (mmres.minLoc.y - ((area.height / 2) - 3));
-//			
-//			Core.putText(mRgba, "pos x:" + posX + "pos y:" + posY, new Point(20, 360),
-//					Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
-//			
-//			if (posX > 2) {
-//				// Right
-//				if (posY > 2) {
-//					Core.putText(mRgba, "Right-up", new Point(mGray.width() - 150, 80),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				} else if (posY < -2){
-//					Core.putText(mRgba, "Right-down", new Point(mGray.width() - 150, mGray.height() - 20),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				} else {
-//					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				}
-//			} else if (posX < -2) {
-//				// Left
-//				if (posY > 2) {
-//					Core.putText(mRgba, "Left-up", new Point(50, 80),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				} else if (posY < -2){
-//					Core.putText(mRgba, "Left-down", new Point(50, mGray.height() - 20),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				} else {
-//					Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-//							Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//				}
-//			} else {
-//				Core.putText(mRgba, "Center", new Point(mGray.width() / 2, mGray.height() / 2),
-//						Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 255, 255, 255));
-//			}
-//		}			
-		
-//		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
-//				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
+		Core.putText(mRgba, "MIN val:" + mmres.minVal + " MAX val:" + mmres.maxVal, new Point(20, 260),
+				Core.FONT_HERSHEY_SIMPLEX, 0.7, new Scalar(255, 0, 255, 255));
 
 		// there is difference in matching methods - best match is max/min value
 		//Point matchLoc;
@@ -713,7 +733,42 @@ public class EyeFingerActivity extends Activity implements CvCameraViewListener2
             break;
         }
         
-        Toast toast = Toast.makeText(this, "ROTATION : " + degrees, Toast.LENGTH_SHORT);
-        toast.show();
+        //Toast toast = Toast.makeText(this, "ROTATION : " + degrees, Toast.LENGTH_SHORT);
+        //toast.show();
+	}
+
+	@SuppressLint("NewApi")
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus)
+	{
+		super.onWindowFocusChanged(hasFocus);
+		if(currentApiVersion >= Build.VERSION_CODES.KITKAT && hasFocus)
+		{
+			getWindow().getDecorView().setSystemUiVisibility(
+					View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+							| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+							| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+							| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+							| View.SYSTEM_UI_FLAG_FULLSCREEN
+							| View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+		}
+	}
+
+	@Override
+	public boolean onKeyDown(int keyCode, KeyEvent event) {
+		if(keyCode == KeyEvent.KEYCODE_HOME)
+		{
+			return false;
+		}
+		if(keyCode== KeyEvent.KEYCODE_BACK)
+		{
+			return false;
+		}
+		return true;
+	}
+
+	private void onUnlock() {
+		finish();
+		overridePendingTransition(R.anim.animation_enter, R.anim.animation_leave);
 	}
 }
